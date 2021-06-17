@@ -1,0 +1,91 @@
+---
+title: "NYPD Data Report"
+date: "28/05/2021"
+output: html_document
+---
+
+## R Markdown
+
+### Statement: This report is about finding out where in New York do people commit the most crimes, their gender and why.  
+
+### Source and Description of the Data: Source is the NYPD open data website and the data is about NYPD's shooting incidents. 
+
+
+
+## Data Setup
+The lines of code below are the reproducible steps to importing the data set
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+library(tidyverse)
+
+NYPD <- c("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+
+urls <- str_c(NYPD)
+
+NYPD_shooting_incident_case <- read_csv(urls[1])
+```
+
+## Tidying and Transforming the Data
+
+There is missing data, but it's incomplete rows, so their omitted when creating tables of the data. The select below removes the columns of data that are unrelevent.
+
+```{r removing, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+
+NYPD_shooting_incident_case <- select(NYPD_shooting_incident_case, -c(LOCATION_DESC, OCCUR_TIME, PRECINCT, JURISDICTION_CODE, X_COORD_CD, Y_COORD_CD, Latitude, Longitude, Lon_Lat))
+```
+Formatting the OCCUR_Date and transforming it to the date class:
+```{r formatting, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+
+NYPD_shooting_incident_case$OCCUR_DATE <- as.Date(NYPD_shooting_incident_case$OCCUR_DATE, format = "%m/%d/%Y")
+```
+
+## Visualization and Analysis
+
+First line is the table of the number of incidents by locations in New York and bottom 2 lines is graphing of the number of incidents by locations in New York and last bottom line is labeling the number of incidents on the bar graph:
+```{r tableOfInt, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+p1 <- table(NYPD_shooting_incident_case$BORO)
+
+graph <- barplot(p1, cex.names = 0.75, ylim = c(0,12000), ylab = "Incidents",xlab = "Districts",main = "Shooting Incidents in New York", col=rainbow(5))
+
+text(graph, y = 11000,label=p1)
+```
+
+First line is the table of the number of incidents by victim's sex and bottom 2 lines is graphing of the number of incidents by victim's sex and last bottom line is labeling the number of incidents on the below bar graph:
+```{r tableOfSex, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+p4 <- table(NYPD_shooting_incident_case$VIC_SEX)
+
+graph2 <- barplot(p4, cex.names = 1.25, ylim = c(0,25000),xlab = "Sex", ylab = "Incidents", main = "Shooting Incidents by Victims' Sex", col="red")
+
+text(graph2, y = 4000,label=p4)
+```
+ 
+
+```{r modelling, include=TRUE}
+knitr::opts_chunk$set(echo=TRUE)
+
+firstThous <- NYPD_shooting_incident_case %>% slice(1:1000)
+blackVicPerThous <- firstThous %>% filter(VIC_RACE == "BLACK")
+Number_Of_Black_Per_Thousand <- nrow(blackVicPerThous)
+Incident_Case_Per_Thousand <- nrow(firstThous)
+mod <- lm(Number_Of_Black_Per_Thousand ~ Incident_Case_Per_Thousand, data = NYPD_shooting_incident_case)
+summary(mod)
+NYPD_blk_pred <- NYPD_shooting_incident_case %>% mutate(pred = predict(mod))
+NYPD_blk_pred %>% ggplot() +
+geom_point(aes(x = Incident_Case_Per_Thousand, y = Number_Of_Black_Per_Thousand), color = "blue") +
+geom_point(aes(x = Incident_Case_Per_Thousand, y = pred), color = "red")
+
+```
+## Model Prediction
+
+
+Brooklyn has the highest number of Shootings and Bronx second. The other 3 places are mostly half the number of shootings as Bronx. I assume that Bronx and Brooklyn has a higher low income and education population density compared to the other areas. For the second graph, males commit crimes much more frequently than compared to females, as I assume that males take more risks and prone to being more active in violent crimes.   
+
+## Conclusion and Bias Identification
+
+Personal Bias: Assume that males commit more violent crimes and is armed. Although by investigating the locations we see that the more dangerous areas of the city have higher crime rates and with mostly lower income families. Also males are risktakers compared to females as females tend to be the ones that take care of their children and tend to avoid committing violent crimes or ones with severe consequences. 
+
+According to the second graph, males commit approximately 10 times the number of crimes than females. In conclusion, males in Bronx and Brooklyn have a higher chance to commit more serious crimes involving firearms.       
